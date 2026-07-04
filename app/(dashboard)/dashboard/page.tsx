@@ -14,12 +14,14 @@ import {
   mockConversations,
   mockPlanLimits,
 } from "../../../lib/mockData";
+import { useRouter } from "next/navigation";
 
 export default function DashboardOverviewPage(): React.JSX.Element {
   const currentUser = mockUsers[0];
   const currentTenant = mockTenants[0];
   const usageStats = mockUsageStats[currentTenant.id];
   const planLimits = mockPlanLimits[currentTenant.plan];
+  const router = useRouter();
 
   const filteredDocuments = mockDocuments.filter(
     (doc) => doc.tenantId === currentTenant.id,
@@ -31,17 +33,11 @@ export default function DashboardOverviewPage(): React.JSX.Element {
   const userFirstName = currentUser.name.split(" ")[0];
 
   const handleUploadClick = () => {
-    if (typeof window !== "undefined") {
-      window.history.pushState({}, "", "/dashboard/documents");
-      window.dispatchEvent(new Event("pushstate"));
-    }
+    router.push("/documents");
   };
 
   const handleNewChatClick = () => {
-    if (typeof window !== "undefined") {
-      window.history.pushState({}, "", "/dashboard/chat");
-      window.dispatchEvent(new Event("pushstate"));
-    }
+    router.push("/chat");
   };
 
   return (

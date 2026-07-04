@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React from "react";
 import {
   Brain,
   LayoutDashboard,
@@ -13,66 +13,55 @@ import { User, Tenant } from "../../types";
 import { getInitials } from "../../lib/utils";
 import { PlanBadge } from "../ui/PlanBadge";
 import { RoleBadge } from "../ui/RoleBadge";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-
-// A lightweight, highly compatible hook that mimics Next.js usePathname
-// using the browser's window.location. This ensures standard SPA and preview compatibility.
-// function usePathname(): string {
-//   // const [pathname, setPathname] = useState<string>(
-//   //   typeof window !== "undefined" ? window.location.pathname : "/",
-//   // );
-
-//   useEffect(() => {
-//     if (typeof window === "undefined") return;
-
-//     const handleLocationChange = () => {
-//       setPathname(window.location.pathname);
-//     };
-
-//     window.addEventListener("popstate", handleLocationChange);
-//     // Custom event to handle programmatical history pushes
-//     window.addEventListener("pushstate", handleLocationChange);
-//     window.addEventListener("replacestate", handleLocationChange);
-
-//     return () => {
-//       window.removeEventListener("popstate", handleLocationChange);
-//       window.removeEventListener("pushstate", handleLocationChange);
-//       window.removeEventListener("replacestate", handleLocationChange);
-//     };
-//   }, []);
-
-//   return pathname;
-// }
 
 export interface SidebarProps {
   currentUser: User;
   currentTenant: Tenant;
+  isSuperAdmin?: boolean;
 }
 
 export function Sidebar({
   currentUser,
   currentTenant,
+  isSuperAdmin = false,
 }: SidebarProps): React.JSX.Element {
   const pathname = usePathname();
+  const router = useRouter();
 
   const navigationItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Documents", href: "/documents", icon: FileText },
-    { name: "Chat", href: "/chat", icon: MessageSquare },
-    { name: "Team", href: "/team", icon: Users },
-    { name: "Billing", href: "/billing", icon: CreditCard },
-    { name: "Settings", href: "/settings", icon: Settings },
+    {
+      href: "/dashboard",
+      label: "Overview",
+      icon: LayoutDashboard,
+      roles: ["admin", "manager", "viewer"],
+    },
+    {
+      href: "/documents",
+      label: "Documents",
+      icon: FileText,
+      roles: ["admin", "manager", "viewer"],
+    },
+    {
+      href: "/chat",
+      label: "AI Chat",
+      icon: MessageSquare,
+      roles: ["admin", "manager", "viewer"],
+    },
+    { href: "/team", label: "Team", icon: Users, roles: ["admin"] },
+    { href: "/billing", label: "Billing", icon: CreditCard, roles: ["admin"] },
+    { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
   ];
+
+  const visibleItems = navigationItems.filter((item) =>
+    item.roles.includes(currentUser.role),
+  );
 
   // Helper function to simulate SPA routing if required
   const handleNavigation = (href: string, e: React.MouseEvent) => {
     e.preventDefault();
-    if (typeof window !== "undefined") {
-      window.history.pushState({}, "", href);
-      // Dispatch custom event to notify hook of path change
-      window.dispatchEvent(new Event("pushstate"));
-    }
+    router.push(href);
   };
 
   return (
@@ -128,7 +117,7 @@ export function Sidebar({
         id="sidebar-nav"
         className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto"
       >
-        {navigationItems.map((item) => {
+        {visibleItems.map((item) => {
           // Check active state
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -136,8 +125,8 @@ export function Sidebar({
 
           return (
             <Link
-              key={item.name}
-              id={`nav-link-${item.name.toLowerCase()}`}
+              key={item.href}
+              id={`nav-link-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
               href={item.href}
               onClick={(e) => handleNavigation(item.href, e)}
               className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
@@ -147,17 +136,27 @@ export function Sidebar({
               }`}
             >
               <Icon
-                id={`nav-icon-${item.name.toLowerCase()}`}
+                id={`nav-icon-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                 className={`w-5 h-5 shrink-0 ${
                   isActive
                     ? "text-white"
                     : "text-gray-400 group-hover:text-gray-500"
                 }`}
               />
-              <span>{item.name}</span>
+              <span>{item.label}</span>
             </Link>
           );
         })}
+
+        {isSuperAdmin && (
+          <Link
+            id="nav-link-super-admin"
+            href="/admin"
+            className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 mt-2 border-t border-gray-100 pt-4"
+          >
+            <span>Super Admin Panel</span>
+          </Link>
+        )}
       </nav>
 
       {/* Bottom section: Current user info */}

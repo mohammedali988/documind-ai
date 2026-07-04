@@ -21,18 +21,15 @@ import {
   truncateText,
   getStatusColor,
 } from "../../../../../lib/utils";
+import { useParams } from "next/navigation";
 
-export interface TenantDetailPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function TenantDetailPage({
-  params,
-}: TenantDetailPageProps): React.JSX.Element {
+export default function TenantDetailPage(): React.JSX.Element {
+  // Manage the suspended state of the tenant
+  const [isSuspended, setIsSuspended] = useState(false);
   const router = useRouter();
-  const tenantId = params.id;
+  const params = useParams();
+
+  const tenantId = params.id as string;
 
   // Find the tenant matching the parameter ID
   const tenant = mockTenants.find((t) => t.id === tenantId);
@@ -40,7 +37,10 @@ export default function TenantDetailPage({
   // If tenant is not found, render the ErrorState component
   if (!tenant) {
     return (
-      <div id="tenant-not-found-container" className="py-12 animate-fade-in">
+      <div
+        id="tenant-not-found-container"
+        className="py-12 animate-fade-in pb-12"
+      >
         <div className="mb-6 max-w-lg mx-auto">
           <Button
             id="btn-back-from-error"
@@ -57,9 +57,6 @@ export default function TenantDetailPage({
       </div>
     );
   }
-
-  // Manage the suspended state of the tenant
-  const [isSuspended, setIsSuspended] = useState(false);
 
   // Filter users belonging to this tenant
   const tenantUsers = mockUsers.filter((u) => u.tenantId === tenant.id);
@@ -87,7 +84,7 @@ export default function TenantDetailPage({
   };
 
   return (
-    <div id="tenant-detail-page" className="space-y-8 animate-fade-in pb-16">
+    <div id="tenant-detail-page" className="space-y-8 animate-fade-in pb-16 p-12">
       {/* Back Button to list overview */}
       <div id="tenant-back-button-container">
         <Button

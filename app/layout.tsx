@@ -1,4 +1,5 @@
 import React from "react";
+import { Auth0Provider } from "@auth0/nextjs-auth0/client";
 import "./globals.css";
 
 // Export metadata according to Next.js standards
@@ -20,7 +21,7 @@ export default function RootLayout({
         id="documind-root"
         className="font-sans min-h-screen bg-gray-50 text-gray-900 antialiased"
       >
-        {children}
+        <Auth0Provider>{children}</Auth0Provider>
       </body>
     </html>
   );

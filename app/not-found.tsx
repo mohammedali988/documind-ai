@@ -3,20 +3,18 @@
 import React from "react";
 import { FileQuestion, Home, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function NotFound(): React.JSX.Element {
+  const router = useRouter();
+
   const handleGoBack = () => {
-    if (typeof window !== "undefined") {
-      window.history.back();
-    }
+    router.back();
   };
 
   const handleGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    if (typeof window !== "undefined") {
-      window.history.pushState({}, "", "/");
-      window.dispatchEvent(new Event("pushstate"));
-    }
+    router.push("/");
   };
 
   return (

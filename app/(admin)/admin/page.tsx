@@ -32,7 +32,7 @@ export default function AdminOverviewPage(): React.JSX.Element {
   return (
     <div
       id="admin-overview-workspace"
-      className="space-y-8 animate-fade-in pb-12"
+      className="space-y-8 animate-fade-in pb-12 p-12"
     >
       {/* Page Header with Admin Badge */}
       <PageHeader

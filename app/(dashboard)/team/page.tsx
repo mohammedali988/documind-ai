@@ -1,65 +1,108 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UserPlus, Users, Shield, Eye } from "lucide-react";
 import { PageHeader } from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { TeamTable } from "../../../components/team/TeamTable";
 import { InviteUserModal } from "../../../components/team/InviteUserModel";
-import { mockUsers, mockTenants } from "../../../lib/mockData";
 import { User, UserRole } from "../../../types";
 
 export default function TeamPage(): React.JSX.Element {
-  const currentTenant = mockTenants[0]; // Smith & Partners
-  const currentUser = mockUsers[0]; // Admin user
-
-  // Initialize state with users filtered by the current tenant ID
-  const tenantUsers = mockUsers.filter((u) => u.tenantId === currentTenant.id);
-  const [users, setUsers] = useState<User[]>(tenantUsers);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [users, setUsers] = useState<User[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Handle changing user role
+  useEffect(() => {
+    async function loadTeamData() {
+      try {
+        const meRes = await fetch("/api/me");
+        const me = await meRes.json();
+        setCurrentUserId(me.sub);
+
+        const membersRes = await fetch("/api/teams/members");
+        const data = await membersRes.json();
+
+        if (!membersRes.ok) {
+          setError(data.error || "Failed to load team members");
+          return;
+        }
+
+        setUsers(data.members);
+      } catch (err) {
+        setError("Failed to load team data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadTeamData();
+  }, []);
+
+  // NOTE: role change and remove-user aren't wired to Auth0 yet —
+  // these still only update local UI state. Building the real
+  // Management API calls for these is a separate task.
   const handleChangeRole = (userId: string, newRole: UserRole) => {
     setUsers((prevUsers) =>
       prevUsers.map((user) =>
         user.id === userId ? { ...user, role: newRole } : user,
       ),
     );
-    console.log(`Updated user ${userId} role to: ${newRole}`);
+    console.log(
+      `TODO: persist role change for ${userId} to ${newRole} via Auth0`,
+    );
   };
 
-  // Handle removing a user
   const handleRemoveUser = (userId: string) => {
     setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
-    console.log(`Removed user with ID: ${userId}`);
+    console.log(`TODO: persist removal of ${userId} via Auth0`);
   };
 
-  // Handle inviting a new user
-  const handleInvite = (email: string, role: UserRole) => {
-    const nameFromEmail = email.split("@")[0];
-    const capitalizedName =
-      nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+  const handleInvite = async (email: string, role: UserRole) => {
+    try {
+      const res = await fetch("/api/teams/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
 
-    const newUser: User = {
-      id: `user-simulated-${Date.now()}`,
-      email: email,
-      name: capitalizedName,
-      role: role,
-      tenantId: currentTenant.id,
-      createdAt: new Date(),
-    };
+      const data = await res.json();
 
-    setUsers((prevUsers) => [...prevUsers, newUser]);
-    console.log("Successfully invited team member:", { email, role });
+      if (!res.ok) {
+        setError(data.error || "Failed to send invite");
+        return;
+      }
+
+      console.log("Invitation sent to:", email);
+      // The invitee won't appear in the members list until they
+      // accept the invite and log in for the first time.
+    } catch (err) {
+      setError("Failed to send invite");
+    }
   };
 
-  // Stats calculation
   const totalMembers = users.length;
   const adminCount = users.filter((u) => u.role === "admin").length;
   const viewerCount = users.filter((u) => u.role === "viewer").length;
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24 text-gray-500 text-sm">
+        Loading team...
+      </div>
+    );
+  }
+
   return (
     <div id="team-workspace-page" className="space-y-8 animate-fade-in pb-12">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {/* Page Header */}
       <PageHeader
         title="Team"
@@ -82,7 +125,6 @@ export default function TeamPage(): React.JSX.Element {
         id="team-stats-row"
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
-        {/* Total Members */}
         <div
           id="stat-card-total"
           className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex items-center gap-4"
@@ -103,7 +145,6 @@ export default function TeamPage(): React.JSX.Element {
           </div>
         </div>
 
-        {/* Admins */}
         <div
           id="stat-card-admins"
           className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex items-center gap-4"
@@ -124,7 +165,6 @@ export default function TeamPage(): React.JSX.Element {
           </div>
         </div>
 
-        {/* Viewers */}
         <div
           id="stat-card-viewers"
           className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex items-center gap-4"
@@ -156,7 +196,7 @@ export default function TeamPage(): React.JSX.Element {
         </div>
         <TeamTable
           users={users}
-          currentUserId={currentUser.id}
+          currentUserId={currentUserId}
           onChangeRole={handleChangeRole}
           onRemoveUser={handleRemoveUser}
         />

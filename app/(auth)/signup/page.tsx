@@ -1,30 +1,59 @@
+"use client";
 import React, { useState } from "react";
 import { Brain, Eye, EyeOff } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
 
-export default function LoginPage(): React.JSX.Element {
+export default function SignupPage(): React.JSX.Element {
+  const [fullName, setFullName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
+  const [agreeTerms, setAgreeTerms] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
-    console.log("Logging in with:", { email, password });
+    setError("");
 
-    // Simulate navigation/auth success callback
-    setTimeout(() => {
-      setIsLoading(false);
-      if (typeof window !== "undefined") {
-        window.location.href = "/dashboard";
+    if (!agreeTerms) {
+      alert("You must agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fullName,
+          email,
+          password,
+          companyName,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Signup failed. Please try again.");
+        setIsLoading(false);
+        return;
       }
-    }, 1000);
+
+      window.location.href = `/auth/login?organization=${data.orgId}&returnTo=/dashboard`;
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Logging in with Google");
+  const handleGoogleSignup = () => {
+    console.log("Signing up with Google");
     if (typeof window !== "undefined") {
       window.location.href = "/dashboard";
     }
@@ -32,39 +61,45 @@ export default function LoginPage(): React.JSX.Element {
 
   return (
     <div
-      id="login-page-container"
+      id="signup-page-container"
       className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 py-12"
     >
       <div
-        id="login-card"
+        id="signup-card"
         className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-sm p-8"
       >
         {/* Brand logo at top */}
-        <div id="login-brand" className="flex flex-col items-center gap-3 mb-8">
+        <div
+          id="signup-brand"
+          className="flex flex-col items-center gap-3 mb-8"
+        >
           <div
-            id="login-logo-icon"
+            id="signup-logo-icon"
             className="flex items-center justify-center w-11 h-11 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-100"
           >
             <Brain className="w-6 h-6" />
           </div>
-          <div id="login-logo-text" className="text-center">
+          <div id="signup-logo-text" className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               DocuMind AI
             </h1>
             <p className="text-sm text-gray-500 font-medium mt-1">
-              Sign in to your workspace
+              Create your account
+            </p>
+            <p className="text-xs text-indigo-600 font-semibold mt-1">
+              Start your free 14-day trial
             </p>
           </div>
         </div>
 
         {/* Continue with Google button */}
-        <div id="login-social-section" className="space-y-4">
+        <div id="signup-social-section" className="space-y-4">
           <Button
-            id="login-btn-google"
+            id="signup-btn-google"
             type="button"
             variant="outline"
             className="w-full h-10 gap-2.5 font-semibold text-gray-700 hover:text-gray-900"
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleSignup}
           >
             <svg
               id="google-icon"
@@ -93,23 +128,43 @@ export default function LoginPage(): React.JSX.Element {
           </Button>
 
           {/* Divider */}
-          <div id="login-divider" className="relative flex py-2 items-center">
+          <div id="signup-divider" className="relative flex py-2 items-center">
             <div className="flex-grow border-t border-gray-200"></div>
             <span className="flex-shrink mx-4 text-[10px] font-bold text-gray-400 tracking-wider uppercase">
-              OR CONTINUE WITH
+              OR
             </span>
             <div className="flex-grow border-t border-gray-200"></div>
           </div>
         </div>
 
-        {/* Credentials Form */}
+        {/* Signup Form */}
         <form
-          id="login-form"
+          id="signup-form"
           onSubmit={handleSubmit}
           className="space-y-4 mt-2"
         >
+          {/* Full Name field */}
+          <div id="signup-form-name-group" className="space-y-1.5">
+            <label
+              htmlFor="name-input"
+              className="text-xs font-bold text-gray-700 tracking-tight"
+            >
+              Full Name
+            </label>
+            <Input
+              id="name-input"
+              type="text"
+              placeholder="John Doe"
+              required
+              disabled={isLoading}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="h-10"
+            />
+          </div>
+
           {/* Email input field */}
-          <div id="login-form-email-group" className="space-y-1.5">
+          <div id="signup-form-email-group" className="space-y-1.5">
             <label
               htmlFor="email-input"
               className="text-xs font-bold text-gray-700 tracking-tight"
@@ -129,22 +184,13 @@ export default function LoginPage(): React.JSX.Element {
           </div>
 
           {/* Password input field */}
-          <div id="login-form-password-group" className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="password-input"
-                className="text-xs font-bold text-gray-700 tracking-tight"
-              >
-                Password
-              </label>
-              <a
-                id="login-link-forgot-password"
-                href="#"
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
-              >
-                Forgot password?
-              </a>
-            </div>
+          <div id="signup-form-password-group" className="space-y-1.5">
+            <label
+              htmlFor="password-input"
+              className="text-xs font-bold text-gray-700 tracking-tight"
+            >
+              Password
+            </label>
             <div className="relative">
               <Input
                 id="password-input"
@@ -157,7 +203,7 @@ export default function LoginPage(): React.JSX.Element {
                 className="h-10 pr-10"
               />
               <button
-                id="login-btn-toggle-password"
+                id="signup-btn-toggle-password"
                 type="button"
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                 onClick={() => setShowPassword(!showPassword)}
@@ -171,29 +217,83 @@ export default function LoginPage(): React.JSX.Element {
             </div>
           </div>
 
+          {/* Company Name field */}
+          <div id="signup-form-company-group" className="space-y-1.5">
+            <label
+              htmlFor="company-input"
+              className="text-xs font-bold text-gray-700 tracking-tight"
+            >
+              Company Name
+            </label>
+            <Input
+              id="company-input"
+              type="text"
+              placeholder="Acme Corp"
+              required
+              disabled={isLoading}
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              className="h-10"
+            />
+          </div>
+
+          {/* Terms checkbox */}
+          <div
+            id="signup-form-terms-group"
+            className="flex items-start gap-2.5 pt-1"
+          >
+            <input
+              id="terms-checkbox"
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              required
+              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mt-0.5"
+            />
+            <label
+              htmlFor="terms-checkbox"
+              className="text-xs text-gray-500 font-medium leading-relaxed cursor-pointer select-none"
+            >
+              I agree to the{" "}
+              <a
+                href="#"
+                className="font-semibold text-indigo-600 hover:underline"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="#"
+                className="font-semibold text-indigo-600 hover:underline"
+              >
+                Privacy Policy
+              </a>
+            </label>
+          </div>
+
           {/* Submit button */}
           <Button
-            id="login-btn-submit"
+            id="signup-btn-submit"
             type="submit"
             disabled={isLoading}
             className="w-full h-10 font-bold mt-2"
           >
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading ? "Creating Account..." : "Create Account"}
           </Button>
         </form>
 
-        {/* Footer info: Sign up redirect */}
+        {/* Footer info: Sign in redirect */}
         <div
-          id="login-card-footer"
+          id="signup-card-footer"
           className="text-center text-xs font-medium text-gray-500 mt-8 pt-6 border-t border-gray-100"
         >
-          Don&apos;t have an account?{" "}
+          Already have an account?{" "}
           <a
-            id="login-link-signup"
-            href="/signup"
+            id="signup-link-login"
+            href="/login"
             className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
           >
-            Sign up
+            Sign in
           </a>
         </div>
       </div>

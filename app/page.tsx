@@ -5,7 +5,7 @@ import { FeaturesSection } from "../components/landing/FeaturesSection";
 import { PricingSection } from "../components/landing/PricingSection";
 import { Footer } from "../components/landing/Footer";
 
-export default function LandingPage(): React.JSX.Element {
+export default async function LandingPage(): Promise<React.JSX.Element> {
   return (
     <div
       id="landing-page-root"

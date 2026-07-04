@@ -42,10 +42,8 @@ export function Header({ title, currentUser }: HeaderProps): React.JSX.Element {
   }, []);
 
   const handleLogout = () => {
-    // Standard mock notification/alert or redirect
-    console.log("Logging out user:", currentUser.email);
     if (typeof window !== "undefined") {
-      window.location.href = "/";
+      window.location.href = "/auth/logout";
     }
   };
 
