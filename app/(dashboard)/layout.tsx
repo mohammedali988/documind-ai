@@ -5,6 +5,7 @@ import { auth0 } from "../../lib/auth";
 import { redirect } from "next/navigation";
 import { parseClaims } from "../../lib/auth";
 import type { User, Tenant } from "../../types";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -25,10 +26,6 @@ export default async function DashboardLayout({
     redirect("/unauthorized");
   }
 
-  // Shaped to match the User/Tenant types your Sidebar/Header expect.
-  // Supabase isn't wired up yet, so fields not available from Auth0
-  // claims (createdAt, industry, plan, stripeCustomerId) are placeholders
-  // for now — swap these for real Supabase data once that's set up.
   const currentUser: User = {
     id: claims.sub,
     email: claims.email,
@@ -38,13 +35,21 @@ export default async function DashboardLayout({
     createdAt: new Date(),
   };
 
+  const { data: tenantRow } = await supabaseAdmin
+    .from("tenants")
+    .select("*")
+    .eq("id", claims.orgId)
+    .single();
+
   const currentTenant: Tenant = {
     id: claims.orgId,
-    name: claims.orgName ?? "Workspace",
-    industry: "unspecified",
-    plan: "free",
-    stripeCustomerId: "",
-    createdAt: new Date(),
+    name: tenantRow?.name ?? claims.orgName ?? "Workspace",
+    industry: tenantRow?.industry ?? "unspecified",
+    plan: tenantRow?.plan ?? "free",
+    stripeCustomerId: tenantRow?.stripe_customer_id ?? "",
+    createdAt: tenantRow?.created_at
+      ? new Date(tenantRow.created_at)
+      : new Date(),
   };
 
   return (

@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "./supabase";
 
 export const auth0 = new Auth0Client({
   async beforeSessionSaved(session) {
@@ -18,6 +20,34 @@ export const auth0 = new Auth0Client({
       },
     };
   },
+  async onCallback(error, context, session) {
+    if (error) {
+      return NextResponse.redirect(
+        new URL(`/login?error=${error.message}`, process.env.APP_BASE_URL),
+      );
+    }
+
+    if (session) {
+      const orgId = (session.user as any)[`${NAMESPACE}/org_id`];
+      const role = (session.user as any)[`${NAMESPACE}/role`];
+
+      if (orgId && role) {
+        await supabaseAdmin.from("users").upsert(
+          {
+            id: session.user.sub,
+            email: session.user.email,
+            name: session.user.name,
+            role,
+            tenant_id: orgId,
+          },
+          { onConflict: "id" },
+        );
+      }
+    }
+    return NextResponse.redirect(
+      new URL(context.returnTo || "/dashboard", process.env.APP_BASE_URL),
+    );
+  },
 });
 
 const NAMESPACE = "https://documind.ai";
@@ -32,7 +62,6 @@ export interface SessionClaims {
   isSuperAdmin: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseClaims(user: any): SessionClaims {
   return {
     sub: user.sub,

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Brain, Eye, EyeOff } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function SignupPage(): React.JSX.Element {
   const [fullName, setFullName] = useState<string>("");
@@ -17,11 +18,6 @@ export default function SignupPage(): React.JSX.Element {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-
-    if (!agreeTerms) {
-      alert("You must agree to the Terms of Service and Privacy Policy.");
-      return;
-    }
 
     setIsLoading(true);
 
@@ -40,7 +36,7 @@ export default function SignupPage(): React.JSX.Element {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Signup failed. Please try again.");
+        setError(data.error?.message || "Signup failed. Please try again.");
         setIsLoading(false);
         return;
       }
@@ -297,6 +293,11 @@ export default function SignupPage(): React.JSX.Element {
           </a>
         </div>
       </div>
+      {error && (
+        <div className="mt-4 w-full max-w-md">
+          <ErrorState message={error} onRetry={() => setError("")} />
+        </div>
+      )}
     </div>
   );
 }

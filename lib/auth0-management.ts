@@ -1,3 +1,5 @@
+import { supabaseAdmin } from "./supabase";
+
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 async function getManagementToken(): Promise<string> {
@@ -119,10 +121,17 @@ export async function inviteUserToOrganization(
 export async function findOrgIdByUserEmail(
   email: string,
 ): Promise<string | null> {
-  // Auth0 doesn't support direct "find org by member email" — query your Supabase
-  // users table instead (see /api/auth/lookup-org below). This function is a
-  // placeholder if you ever need to search Auth0 directly via user_metadata.
-  return null;
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("tenant_id")
+    .eq("email", email)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data.tenant_id;
 }
 
 export async function enableConnectionForOrg(
@@ -164,4 +173,16 @@ export async function getOrganizationMembers(orgId: string) {
   );
 
   return membersWithRoles;
+}
+
+export async function deleteAuth0User(userId: string) {
+  return mgmtFetch(`/users/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteAuth0Organization(orgId: string) {
+  return mgmtFetch(`/organizations/${orgId}`, {
+    method: "DELETE",
+  });
 }
