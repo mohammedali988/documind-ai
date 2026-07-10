@@ -1,6 +1,7 @@
 import React from "react";
 import { Auth0Provider } from "@auth0/nextjs-auth0/client";
 import "./globals.css";
+import { TRPCProvider } from "@/lib/trpc/provider";
 
 // Export metadata according to Next.js standards
 export const metadata = {
@@ -21,7 +22,9 @@ export default function RootLayout({
         id="documind-root"
         className="font-sans min-h-screen bg-gray-50 text-gray-900 antialiased"
       >
-        <Auth0Provider>{children}</Auth0Provider>
+        <Auth0Provider>
+          <TRPCProvider>{children}</TRPCProvider>
+        </Auth0Provider>
       </body>
     </html>
   );
