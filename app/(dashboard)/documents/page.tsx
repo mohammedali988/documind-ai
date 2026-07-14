@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FileText,
   Search,
@@ -21,6 +21,7 @@ import { mockDocuments, mockUsers, mockTenants } from "../../../lib/mockData";
 import { Document } from "../../../types";
 import { UploadArea } from "../../../components/documents/UploadArea";
 import { DocumentList } from "../../../components/documents/DocumentList";
+import { uploadFileToSupabase } from "@/server/services/storage";
 
 export default function DocumentsPage(): React.JSX.Element {
   const tenant = mockTenants[0]; // Smith & Partners
@@ -34,6 +35,16 @@ export default function DocumentsPage(): React.JSX.Element {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [viewType, setViewType] = useState<"table" | "grid">("table");
   const [showUploadArea, setShowUploadArea] = useState<boolean>(false);
+  const [tenantId, setTenantId] = useState<string>("");
+
+  // Fetch tenant id
+  useEffect(() => {
+    fetch("/api/me")
+      .then((res) => res.json())
+      .then((data) => {
+        setTenantId(data.orgId);
+      });
+  }, []);
 
   // Filter documents based on search and status filter
   const filteredDocs = documents.filter((doc) => {
@@ -62,32 +73,23 @@ export default function DocumentsPage(): React.JSX.Element {
   };
 
   // Simulated upload function
-  const handleSimulatedUpload = (fileName: string) => {
+  const handleSimulatedUpload = async (file: File) => {
     setIsUploading(true);
 
-    const newDocId = `doc-simulated-${Date.now()}`;
-    const newDoc: Document = {
-      id: newDocId,
-      tenantId: tenant.id,
-      uploadedBy: currentUser.id,
-      name: fileName,
-      fileType: fileName.endsWith(".docx") ? "docx" : "pdf",
-      fileUrl: "#",
-      status: "processing",
-      createdAt: new Date(),
-    };
+    const data = await uploadFileToSupabase(file, tenantId, file.name);
 
-    setDocuments((prev) => [newDoc, ...prev]);
+    setIsUploading(false);
+    // setDocuments((prev) => [newDoc, ...prev]);
 
-    // Simulate complete
-    setTimeout(() => {
-      setDocuments((prev) =>
-        prev.map((doc) =>
-          doc.id === newDocId ? { ...doc, status: "ready" } : doc,
-        ),
-      );
-      setIsUploading(false);
-    }, 4000);
+    // // Simulate complete
+    // setTimeout(() => {
+    //   setDocuments((prev) =>
+    //     prev.map((doc) =>
+    //       doc.id === newDocId ? { ...doc, status: "ready" } : doc,
+    //     ),
+    //   );
+    //   setIsUploading(false);
+    // }, 4000);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,7 +97,7 @@ export default function DocumentsPage(): React.JSX.Element {
     if (files && files.length > 0) {
       const file = files[0];
       if (file.name.endsWith(".pdf") || file.name.endsWith(".docx")) {
-        handleSimulatedUpload(file.name);
+        handleSimulatedUpload(file);
       } else {
         alert("Invalid file format. Please upload a PDF or DOCX document.");
       }
@@ -166,7 +168,7 @@ export default function DocumentsPage(): React.JSX.Element {
           </div>
           <UploadArea
             onFileSelect={(file) => {
-              handleSimulatedUpload(file.name);
+              handleSimulatedUpload(file);
               setShowUploadArea(false);
             }}
             isUploading={isUploading}
@@ -395,8 +397,8 @@ export default function DocumentsPage(): React.JSX.Element {
                   No documents indexed
                 </h4>
                 <p className="text-xs text-gray-500 max-w-xs mx-auto mt-1 leading-relaxed">
-                  We couldn&apos;t find any documents matching your current criteria.
-                  Adjust your search or upload a new file.
+                  We couldn&apos;t find any documents matching your current
+                  criteria. Adjust your search or upload a new file.
                 </p>
               </div>
             )}

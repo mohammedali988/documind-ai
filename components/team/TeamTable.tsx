@@ -2,14 +2,15 @@
 
 import React from "react";
 import { Trash2, Users } from "lucide-react";
-import { User, UserRole } from "../../types";
+import { UserRole } from "../../types";
 import { formatDate, getInitials } from "../../lib/utils";
 import { RoleBadge } from "../ui/RoleBadge";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
+import { RouterOutputs } from "@/lib/trpc/client";
 
 export interface TeamTableProps {
-  users: User[];
+  users: RouterOutputs["user"]["listTeamMembers"];
   currentUserId: string;
   onChangeRole: (userId: string, newRole: UserRole) => void;
   onRemoveUser: (userId: string) => void;

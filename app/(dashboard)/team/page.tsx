@@ -1,63 +1,43 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { UserPlus, Users, Shield, Eye } from "lucide-react";
 import { PageHeader } from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { TeamTable } from "../../../components/team/TeamTable";
 import { InviteUserModal } from "../../../components/team/InviteUserModel";
-import { User, UserRole } from "../../../types";
+import { UserRole } from "../../../types";
+import { trpc } from "@/lib/trpc/client";
 
 export default function TeamPage(): React.JSX.Element {
-  const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [users, setUsers] = useState<User[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  // const [isLoading, setIsLoading] = useState(true);
+  const [errors, setErrors] = useState("");
 
-  useEffect(() => {
-    async function loadTeamData() {
-      try {
-        const meRes = await fetch("/api/me");
-        const me = await meRes.json();
-        setCurrentUserId(me.sub);
+  const utils = trpc.useUtils();
 
-        const membersRes = await fetch("/api/teams/members");
-        const data = await membersRes.json();
+  const { data: me } = trpc.user.me.useQuery();
 
-        if (!membersRes.ok) {
-          setError(data.error || "Failed to load team members");
-          return;
-        }
+  const {
+    data: members,
+    isLoading,
+    error,
+  } = trpc.user.listTeamMembers.useQuery();
 
-        setUsers(data.members);
-      } catch (err) {
-        setError("Failed to load team data");
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  const updateRoleMutation = trpc.user.updateRole.useMutation({
+    onSuccess: () => utils.user.listTeamMembers.invalidate(),
+  });
 
-    loadTeamData();
-  }, []);
+  const removeMemberMutation = trpc.user.removeMember.useMutation({
+    onSuccess: () => utils.user.listTeamMembers.invalidate(),
+  });
 
-  // NOTE: role change and remove-user aren't wired to Auth0 yet —
-  // these still only update local UI state. Building the real
-  // Management API calls for these is a separate task.
   const handleChangeRole = (userId: string, newRole: UserRole) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.id === userId ? { ...user, role: newRole } : user,
-      ),
-    );
-    console.log(
-      `TODO: persist role change for ${userId} to ${newRole} via Auth0`,
-    );
+    updateRoleMutation.mutate({ userId, role: newRole });
   };
 
   const handleRemoveUser = (userId: string) => {
-    setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
-    console.log(`TODO: persist removal of ${userId} via Auth0`);
+    removeMemberMutation.mutate({ userId });
   };
 
   const handleInvite = async (email: string, role: UserRole) => {
@@ -71,7 +51,7 @@ export default function TeamPage(): React.JSX.Element {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to send invite");
+        setErrors(data.error || "Failed to send invite");
         return;
       }
 
@@ -79,13 +59,14 @@ export default function TeamPage(): React.JSX.Element {
       // The invitee won't appear in the members list until they
       // accept the invite and log in for the first time.
     } catch (err) {
-      setError("Failed to send invite");
+      console.log(err, "here is the error ");
+      setErrors("Failed to send invite");
     }
   };
 
-  const totalMembers = users.length;
-  const adminCount = users.filter((u) => u.role === "admin").length;
-  const viewerCount = users.filter((u) => u.role === "viewer").length;
+  const totalMembers = members?.length;
+  const adminCount = members?.filter((u) => u.role === "admin").length;
+  const viewerCount = members?.filter((u) => u.role === "viewer").length;
 
   if (isLoading) {
     return (
@@ -99,7 +80,7 @@ export default function TeamPage(): React.JSX.Element {
     <div id="team-workspace-page" className="space-y-8 animate-fade-in pb-12">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-          {error}
+          {errors}
         </div>
       )}
 
@@ -195,8 +176,8 @@ export default function TeamPage(): React.JSX.Element {
           </span>
         </div>
         <TeamTable
-          users={users}
-          currentUserId={currentUserId}
+          users={members ?? []}
+          currentUserId={me?.sub ?? ""}
           onChangeRole={handleChangeRole}
           onRemoveUser={handleRemoveUser}
         />
