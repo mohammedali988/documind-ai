@@ -11,13 +11,10 @@ import { trpc } from "@/lib/trpc/client";
 
 export default function TeamPage(): React.JSX.Element {
   const [showInviteModal, setShowInviteModal] = useState(false);
-  // const [isLoading, setIsLoading] = useState(true);
   const [errors, setErrors] = useState("");
-
   const utils = trpc.useUtils();
 
   const { data: me } = trpc.user.me.useQuery();
-
   const {
     data: members,
     isLoading,

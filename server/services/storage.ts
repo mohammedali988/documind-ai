@@ -1,4 +1,4 @@
-"use server"
+"use server";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function uploadFileToSupabase(
@@ -13,11 +13,16 @@ export async function uploadFileToSupabase(
       upsert: false,
     });
 
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from("documents").getPublicUrl(data?.path || "");
+
+
   if (error) {
     throw new Error(`File upload failed: ${error.message}`);
   }
   console.log("File uploaded successfully:", data);
-  return data.path;
+  return publicUrl;
 }
 
 export async function deleteFile(filePath: string): Promise<void> {

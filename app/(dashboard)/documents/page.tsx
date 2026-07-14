@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   FileText,
   Search,
@@ -21,6 +21,7 @@ import { mockDocuments, mockUsers, mockTenants } from "../../../lib/mockData";
 import { Document } from "../../../types";
 import { UploadArea } from "../../../components/documents/UploadArea";
 import { DocumentList } from "../../../components/documents/DocumentList";
+import { trpc } from "@/lib/trpc/client";
 import { uploadFileToSupabase } from "@/server/services/storage";
 
 export default function DocumentsPage(): React.JSX.Element {
@@ -35,16 +36,12 @@ export default function DocumentsPage(): React.JSX.Element {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [viewType, setViewType] = useState<"table" | "grid">("table");
   const [showUploadArea, setShowUploadArea] = useState<boolean>(false);
-  const [tenantId, setTenantId] = useState<string>("");
 
-  // Fetch tenant id
-  useEffect(() => {
-    fetch("/api/me")
-      .then((res) => res.json())
-      .then((data) => {
-        setTenantId(data.orgId);
-      });
-  }, []);
+  const utils = trpc.useUtils();
+
+  const addDocumentMutation = trpc.documents.addDocumentsProcedure.useMutation({
+    onSuccess: () => console.log("Document added successfully"),
+  });
 
   // Filter documents based on search and status filter
   const filteredDocs = documents.filter((doc) => {
@@ -76,32 +73,25 @@ export default function DocumentsPage(): React.JSX.Element {
   const handleSimulatedUpload = async (file: File) => {
     setIsUploading(true);
 
-    const data = await uploadFileToSupabase(file, tenantId, file.name);
+    try {
+      const publicUrl = await uploadFileToSupabase(file, tenant.id, file.name);
+
+      if (!documents) {
+        throw new Error("Failed to upload document to Supabase.");
+      }
+
+      const document = addDocumentMutation.mutate({
+        fileName: file.name,
+        fileType: file.type,
+        fileUrl: publicUrl,
+      });
+
+      console.log("Document added successfully:", document);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+    }
 
     setIsUploading(false);
-    // setDocuments((prev) => [newDoc, ...prev]);
-
-    // // Simulate complete
-    // setTimeout(() => {
-    //   setDocuments((prev) =>
-    //     prev.map((doc) =>
-    //       doc.id === newDocId ? { ...doc, status: "ready" } : doc,
-    //     ),
-    //   );
-    //   setIsUploading(false);
-    // }, 4000);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      if (file.name.endsWith(".pdf") || file.name.endsWith(".docx")) {
-        handleSimulatedUpload(file);
-      } else {
-        alert("Invalid file format. Please upload a PDF or DOCX document.");
-      }
-    }
   };
 
   const getStatusBadge = (status: "ready" | "processing" | "failed") => {
