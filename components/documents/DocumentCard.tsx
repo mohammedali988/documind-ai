@@ -1,7 +1,7 @@
 import React from "react";
 import { Eye, Trash2, FileText, FileType } from "lucide-react";
 import { Document } from "../../types";
-import { formatDate, getStatusColor, truncateText } from "../../lib/utils";
+import { getStatusColor, truncateText } from "../../lib/utils";
 import { mockUsers } from "../../lib/mockData";
 import { Button } from "../ui/Button";
 
@@ -66,7 +66,11 @@ export function DocumentCard({
               id={`document-date-${document.id}`}
               className="text-[11px] text-gray-400 mt-0.5"
             >
-              {formatDate(document.createdAt)}
+              {new Date(document.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
             </p>
           </div>
         </div>

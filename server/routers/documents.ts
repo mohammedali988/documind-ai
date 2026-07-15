@@ -7,6 +7,19 @@ export const documentsRouter = router({
     return ctx.claims;
   }),
 
+  listDocuments: protectedProcedure.query(async ({ ctx }) => {
+    const { data, error } = await ctx.supabase
+      .from("documents")
+      .select("*, uploaded_by_user:users!uploaded_by(name, email)")
+      .eq("tenant_id", ctx.claims.orgId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }),
+
   addDocumentsProcedure: adminProcedure
     .input(
       z.object({
@@ -16,7 +29,20 @@ export const documentsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { fileName, fileType, fileUrl } = input;
+      const { fileName, fileUrl } = input;
+
+      const getSimpleFileType = (fileName: string): string => {
+        const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
+        const typeMap: Record<string, string> = {
+          pdf: "pdf",
+          doc: "doc",
+          docx: "docx",
+          txt: "text",
+        };
+
+        return typeMap[ext] || ext || "unknown";
+      };
 
       const { data: documentRow, error: dbError } = await supabaseAdmin
         .from("documents")
@@ -24,7 +50,7 @@ export const documentsRouter = router({
           tenant_id: ctx.claims.orgId,
           uploaded_by: ctx.claims.sub,
           name: fileName,
-          file_type: fileType,
+          file_type: getSimpleFileType(fileName),
           file_url: fileUrl,
           status: "Ready",
         })

@@ -32,7 +32,7 @@ export interface Document {
   fileType: FileType;
   fileUrl: string;
   status: DocumentStatus;
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface DocumentChunk {

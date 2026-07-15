@@ -1,13 +1,13 @@
 import React from "react";
 import { FileText } from "lucide-react";
-import { Document } from "../../types";
 import { DocumentCard } from "./DocumentCard";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 import { ErrorState } from "../ui/ErrorState";
 import { EmptyState } from "../ui/EmptyState";
+import { RouterOutputs } from "@/lib/trpc/client";
 
 export interface DocumentListProps {
-  documents: Document[];
+  documents: RouterOutputs["documents"]["listDocuments"];
   isLoading?: boolean;
   error?: string | null;
   onViewDocument: (id: string) => void;

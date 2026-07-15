@@ -29,8 +29,8 @@ export default function DocumentsPage(): React.JSX.Element {
   const currentUser = mockUsers[0]; // smith admin (has full delete permissions)
 
   // Set up local state for list of documents
-  const initialDocs = mockDocuments.filter((doc) => doc.tenantId === tenant.id);
-  const [documents, setDocuments] = useState<Document[]>(initialDocs);
+  // const initialDocs = mockDocuments.filter((doc) => doc.tenantId === tenant.id);
+  // const [documents, setDocuments] = useState<Document[]>(initialDocs);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -40,11 +40,15 @@ export default function DocumentsPage(): React.JSX.Element {
   const utils = trpc.useUtils();
 
   const addDocumentMutation = trpc.documents.addDocumentsProcedure.useMutation({
-    onSuccess: () => console.log("Document added successfully"),
+    onSuccess: () => utils.documents.listDocuments.invalidate(),
   });
 
+  const documents = trpc.documents.listDocuments.useQuery();
+
+  console.log("listDocumentsQuery data:", documents.data);
+
   // Filter documents based on search and status filter
-  const filteredDocs = documents.filter((doc) => {
+  const filteredDocs = documents.data?.filter((doc) => {
     const matchesSearch = doc.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -52,22 +56,20 @@ export default function DocumentsPage(): React.JSX.Element {
     return matchesSearch && matchesStatus;
   });
 
-  // Handle document deletion
-  const handleDeleteDoc = (id: string, name: string) => {
-    // Check if user is a viewer
-    if (currentUser.role === "viewer") {
-      alert("Unauthorized! Viewers cannot delete documents in this workspace.");
-      return;
-    }
+  // // Handle document deletion
+  // const handleDeleteDoc = (id: string, name: string) => {
+  //   // Check if user is a viewer
+  //   if (currentUser.role === "viewer") {
+  //     alert("Unauthorized! Viewers cannot delete documents in this workspace.");
+  //     return;
+  //   }
 
-    if (
-      confirm(
-        `Are you sure you want to delete "${name}"? This will permanently remove it from the knowledge base.`,
-      )
-    ) {
-      setDocuments((prev) => prev.filter((doc) => doc.id !== id));
-    }
-  };
+  //   if (
+  //     confirm(
+  //       `Are you sure you want to delete "${name}"? This will permanently remove it from the knowledge base.`,
+  //     )
+  //   )
+  // };
 
   // Simulated upload function
   const handleSimulatedUpload = async (file: File) => {
@@ -120,10 +122,10 @@ export default function DocumentsPage(): React.JSX.Element {
     }
   };
 
-  const getUserName = (userId: string) => {
-    const user = mockUsers.find((u) => u.id === userId);
-    return user ? user.name : "System";
-  };
+  // const getUserName = (userId: string) => {
+  //   const user = mockUsers.find((u) => u.id === userId);
+  //   return user ? user.name : "System";
+  // };
 
   return (
     <div id="documents-page" className="space-y-8 animate-fade-in">
@@ -246,22 +248,22 @@ export default function DocumentsPage(): React.JSX.Element {
         {viewType === "grid" ? (
           <div className="p-6">
             <DocumentList
-              documents={filteredDocs}
+              documents={filteredDocs || []}
               isLoading={isUploading}
               onViewDocument={(id) => {
-                window.history.pushState({}, "", `/dashboard/documents/${id}`);
+                window.history.pushState({}, "", `/documents/${id}`);
                 window.dispatchEvent(new Event("pushstate"));
               }}
               onDeleteDocument={(id) => {
-                const doc = documents.find((d) => d.id === id);
-                if (doc) handleDeleteDoc(id, doc.name);
+                // const doc = documents.data?.find((d) => d.id === id);
+                // if (doc) handleDeleteDoc(id, doc.name);
               }}
               onUploadClick={() => setShowUploadArea(true)}
             />
           </div>
         ) : (
           <div className="overflow-x-auto">
-            {filteredDocs.length > 0 ? (
+            {(filteredDocs?.length ?? 0 > 0) ? (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -274,7 +276,7 @@ export default function DocumentsPage(): React.JSX.Element {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm">
-                  {filteredDocs.map((doc) => (
+                  {filteredDocs?.map((doc) => (
                     <tr
                       key={doc.id}
                       id={`doc-row-${doc.id}`}
@@ -310,7 +312,7 @@ export default function DocumentsPage(): React.JSX.Element {
                       {/* File extension type */}
                       <td className="px-6 py-4">
                         <span className="font-mono text-xs text-gray-500 uppercase font-semibold">
-                          {doc.fileType}
+                          {doc.file_type}
                         </span>
                       </td>
 
@@ -321,12 +323,12 @@ export default function DocumentsPage(): React.JSX.Element {
 
                       {/* Uploader Name */}
                       <td className="px-6 py-4 text-xs font-semibold text-gray-600">
-                        {getUserName(doc.uploadedBy)}
+                        {doc.uploaded_by_user.name}
                       </td>
 
                       {/* Created Date */}
                       <td className="px-6 py-4 text-xs font-medium text-gray-500">
-                        {new Date(doc.createdAt).toLocaleDateString("en-US", {
+                        {new Date(doc.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -368,7 +370,7 @@ export default function DocumentsPage(): React.JSX.Element {
                           <button
                             id={`delete-doc-${doc.id}`}
                             type="button"
-                            onClick={() => handleDeleteDoc(doc.id, doc.name)}
+                            // onClick={() => handleDeleteDoc(doc.id, doc.name)}
                             className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
                             title="Delete document"
                           >
