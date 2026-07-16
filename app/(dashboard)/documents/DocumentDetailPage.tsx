@@ -139,7 +139,7 @@ export function DocumentDetailPage({
     tenantId: document?.tenantId || "",
     content: text,
     chunkIndex: idx,
-    createdAt: document?.createdAt || new Date(),
+    createdAt: document?.created_at || new Date(),
   }));
 
   const suggestedPrompts = documentSuggestedPrompts[documentId] || [
@@ -481,7 +481,7 @@ Persistent client WebSockets are routed to a custom **Node.js connection manager
                   <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
                     <span className="text-xs font-medium text-gray-600">
-                      {formatDate(document.createdAt)}
+                      {formatDate(document.created_at)}
                     </span>
                   </div>
                 </div>

@@ -26,11 +26,8 @@ import { uploadFileToSupabase } from "@/server/services/storage";
 
 export default function DocumentsPage(): React.JSX.Element {
   const tenant = mockTenants[0]; // Smith & Partners
-  const currentUser = mockUsers[0]; // smith admin (has full delete permissions)
 
   // Set up local state for list of documents
-  // const initialDocs = mockDocuments.filter((doc) => doc.tenantId === tenant.id);
-  // const [documents, setDocuments] = useState<Document[]>(initialDocs);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -39,13 +36,19 @@ export default function DocumentsPage(): React.JSX.Element {
 
   const utils = trpc.useUtils();
 
+  const me = trpc.user.me.useQuery();
   const addDocumentMutation = trpc.documents.addDocumentsProcedure.useMutation({
     onSuccess: () => utils.documents.listDocuments.invalidate(),
   });
 
-  const documents = trpc.documents.listDocuments.useQuery();
-
-  console.log("listDocumentsQuery data:", documents.data);
+  const documents = trpc.documents.listDocuments.useQuery(undefined, {
+    refetchInterval: (query) => {
+      const hasProcessing = query.state.data?.some(
+        (doc) => doc.status === "processing",
+      );
+      return hasProcessing ? 2000 : false; // poll every 2s while anything is processing, otherwise stop
+    },
+  });
 
   // Filter documents based on search and status filter
   const filteredDocs = documents.data?.filter((doc) => {
@@ -76,7 +79,11 @@ export default function DocumentsPage(): React.JSX.Element {
     setIsUploading(true);
 
     try {
-      const publicUrl = await uploadFileToSupabase(file, tenant.id, file.name);
+      const { publicUrl, filePath } = await uploadFileToSupabase(
+        file,
+        me.data?.orgId || "",
+        file.name,
+      );
 
       if (!documents) {
         throw new Error("Failed to upload document to Supabase.");
@@ -86,6 +93,7 @@ export default function DocumentsPage(): React.JSX.Element {
         fileName: file.name,
         fileType: file.type,
         fileUrl: publicUrl,
+        filePath: filePath,
       });
 
       console.log("Document added successfully:", document);

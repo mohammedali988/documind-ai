@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../trpc";
-import { supabaseAdmin } from "@/lib/supabase";
+import { createChunk, extractText } from "../services/processor";
+import { after } from "next/server";
 
 export const documentsRouter = router({
   me: protectedProcedure.query(({ ctx }) => {
@@ -26,10 +27,11 @@ export const documentsRouter = router({
         fileName: z.string(),
         fileType: z.string(),
         fileUrl: z.string().url(),
+        filePath: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { fileName, fileUrl } = input;
+      const { fileName, fileUrl, filePath } = input;
 
       const getSimpleFileType = (fileName: string): string => {
         const ext = fileName.split(".").pop()?.toLowerCase() || "";
@@ -44,7 +46,7 @@ export const documentsRouter = router({
         return typeMap[ext] || ext || "unknown";
       };
 
-      const { data: documentRow, error: dbError } = await supabaseAdmin
+      const { data: documentRow, error: dbError } = await ctx.supabase
         .from("documents")
         .insert({
           tenant_id: ctx.claims.orgId,
@@ -52,7 +54,7 @@ export const documentsRouter = router({
           name: fileName,
           file_type: getSimpleFileType(fileName),
           file_url: fileUrl,
-          status: "Ready",
+          status: "processing",
         })
         .select()
         .single();
@@ -60,6 +62,49 @@ export const documentsRouter = router({
       if (dbError) {
         throw new Error(dbError.message);
       }
+
+      after(async () => {
+        try {
+          const { data: fileData } = await ctx.supabase.storage
+            .from("documents")
+            .download(filePath);
+
+          if (!fileData) {
+            throw new Error("File not found in storage");
+          }
+
+          const arrayBuffer = await fileData.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const rawText = await extractText(buffer, documentRow.file_type);
+
+          const { vectors, chunks } = await createChunk(rawText);
+
+          const chunkRows = chunks.map((chunk, i) => ({
+            document_id: documentRow.id,
+            tenant_id: ctx.claims.orgId,
+            content: chunk.pageContent,
+            embedding: `[${vectors[i].join(",")}]`,
+            chunk_index: i,
+          }));
+
+          const { error: chunkError } = await ctx.supabase
+            .from("document_chunks")
+            .insert(chunkRows);
+
+          if (chunkError) throw new Error(chunkError.message);
+
+          await ctx.supabase
+            .from("documents")
+            .update({ status: "ready" })
+            .eq("id", documentRow.id);
+        } catch (err) {
+          console.log("Error processing document:", err);
+          await ctx.supabase
+            .from("documents")
+            .update({ status: "failed" })
+            .eq("id", documentRow.id);
+        }
+      });
 
       return documentRow;
     }),
@@ -72,7 +117,7 @@ export const documentsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { filePath } = input;
-      const { error } = await supabaseAdmin.storage
+      const { error } = await ctx.supabase.storage
         .from("documents")
         .remove([filePath]);
 

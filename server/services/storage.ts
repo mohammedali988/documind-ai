@@ -5,7 +5,7 @@ export async function uploadFileToSupabase(
   file: File,
   tenantId: string,
   fileName: string,
-): Promise<string> {
+): Promise<{ publicUrl: string; filePath: string }> {
   const { data, error } = await supabaseAdmin.storage
     .from("documents")
     .upload(`/${tenantId}/${fileName}`, file, {
@@ -17,12 +17,11 @@ export async function uploadFileToSupabase(
     data: { publicUrl },
   } = supabaseAdmin.storage.from("documents").getPublicUrl(data?.path || "");
 
-
   if (error) {
     throw new Error(`File upload failed: ${error.message}`);
   }
-  console.log("File uploaded successfully:", data);
-  return publicUrl;
+
+  return { publicUrl, filePath: data.path };
 }
 
 export async function deleteFile(filePath: string): Promise<void> {
