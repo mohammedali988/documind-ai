@@ -13,9 +13,12 @@ import { Conversation, Message } from "../../../types";
 import { ConversationList } from "../../../components/chat/ConversationList";
 import { ChatMessage } from "../../../components/chat/ChatMessage";
 import { ChatInput } from "../../../components/chat/ChatInput";
+import { trpc } from "@/lib/trpc/client";
 
 export default function ChatPage(): React.JSX.Element {
   const tenant = mockTenants[0]; // Smith & Partners
+
+  const me = trpc.user.me.useQuery();
 
   // States
   const tenantDocs = mockDocuments.filter((doc) => doc.tenantId === tenant.id);
@@ -34,6 +37,10 @@ export default function ChatPage(): React.JSX.Element {
 
   const [isAiResponding, setIsAiResponding] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const searchAi = trpc.conversations.aiSearchingProcedure.useMutation({
+    onSuccess: () => console.log("hello there")
+  });
 
   // Scroll to bottom when messages or active chat change
   useEffect(() => {
@@ -57,7 +64,7 @@ export default function ChatPage(): React.JSX.Element {
     const newId = `conv-simulated-${Date.now()}`;
     const newConv: Conversation = {
       id: newId,
-      tenantId: tenant.id,
+      tenantId: me.data?.orgId || "org-simulated",
       userId: "user-smith-admin",
       title: "New Conversation",
       createdAt: new Date(),
@@ -80,6 +87,10 @@ export default function ChatPage(): React.JSX.Element {
       createdAt: new Date(),
     };
 
+    const document = searchAi.mutate({
+      userText: text,
+    });
+
     // If it's a "New Conversation" thread, rename the title to the user's first query
     setConversations((prev) =>
       prev.map((c) =>
@@ -92,76 +103,17 @@ export default function ChatPage(): React.JSX.Element {
       ),
     );
 
-    setMessages((prev) => [...prev, userMsg]);
+    // setMessages((prev) => [...prev, userMsg]);
     setIsAiResponding(true);
 
-    // Simulate RAG (Retrieval-Augmented Generation) response delay
-    setTimeout(() => {
-      // Formulate a smart response based on keywords and selected documents
-      const queryLower = userMsg.content.toLowerCase();
-      let replyContent = "";
-      let citations: string[] = [];
-
-      // Grounding sources based on selected documents
-      const selectedDocs = tenantDocs.filter((d) =>
-        selectedDocIds.includes(d.id),
-      );
-
-      if (selectedDocs.length === 0) {
-        replyContent =
-          "I don't have access to any grounded context because you have unselected all documents. Please select at least one document from the sidebar to ground my knowledge base.";
-      } else {
-        // Keyword routing for intelligent simulated answers
-        if (
-          queryLower.includes("nda") ||
-          queryLower.includes("remedy") ||
-          queryLower.includes("breach")
-        ) {
-          replyContent = `Based on the **NDA Template.docx**:\n\n1. **Injunction Relief:** Section 5 states that any breach will cause irreparable harm. The disclosing party can seek an immediate injunction without needing to post a bond.\n2. **Survival Clauses:** These confidentiality covenants survive for a duration of **five (5) years** after the agreement terminates.\n3. **Notice Period:** If a party is required by law or subpoena to disclose confidential information, they must notify the other party immediately to allow them to seek a protective order.`;
-          citations = [
-            "NDA Template.docx - Section 5: Remedies for Breach",
-            "NDA Template.docx - Section 8: Term and Survival",
-          ];
-        } else if (
-          queryLower.includes("handbook") ||
-          queryLower.includes("refund") ||
-          queryLower.includes("billing")
-        ) {
-          replyContent = `According to the **Employee Handbook 2024.pdf** (specifically Section 4.2):\n\n* **Billing transparency:** Fee disputes must be reported within **15 days** of receiving the invoice to the Managing Partner.\n* **Client communications:** Staff must maintain transparent communication regarding pricing and hours log to avoid payment frictions.\n* There are no active customer refund clauses in the handbook because it governs internal employee conduct.`;
-          citations = [
-            "Employee Handbook 2024.pdf - Section 4.2: Billing and Retainers",
-          ];
-        } else if (
-          queryLower.includes("litigation") ||
-          queryLower.includes("strategy") ||
-          queryLower.includes("court")
-        ) {
-          replyContent = `Based on the **Litigation Strategy Draft.pdf**:\n\n* The defense strategy focuses heavily on immediate motion filings challenging jurisdiction.\n* Settlement options are outlined in Phase 2 if early summary judgment is not granted.\n* Client billing records and hours projections have been aligned to resource allocations for Q3-Q4.`;
-          citations = [
-            "Litigation Strategy Draft.pdf - Page 4: Tactical Jurisdictional Challenges",
-          ];
-        } else {
-          // General fallback smart response citing whatever documents are selected
-          const activeDocsList = selectedDocs.map((d) => d.name).join(", ");
-          replyContent = `I have searched across your active workspace documents (${activeDocsList}) but couldn't find a direct match for that specific question. However, using general enterprise knowledge from your indexed documents:\n\n* The organization follows SOC 2 and GDPR compliance standards.\n* Document permissions are strictly isolated on a tenant-by-tenant level.\n* For specific legal or employee guidelines, please query terms like **"NDA remedies"** or **"Employee billing handbook"**.`;
-          citations = selectedDocs
-            .slice(0, 2)
-            .map((d) => `${d.name} - General Index`);
-        }
-      }
-
-      const aiMsg: Message = {
-        id: `msg-ai-${Date.now()}`,
-        conversationId: activeConvId,
-        role: "assistant",
-        content: replyContent,
-        sources: citations,
-        createdAt: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsAiResponding(false);
-    }, 2200);
+    // const aiMsg: Message = {
+    //   id: `msg-ai-${Date.now()}`,
+    //   conversationId: activeConvId,
+    //   role: "assistant",
+    //   content: replyContent,
+    //   sources: citations,
+    //   createdAt: new Date(),
+    // };
   };
 
   return (

@@ -17,16 +17,12 @@ import {
 import { PageHeader } from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
-import { mockDocuments, mockUsers, mockTenants } from "../../../lib/mockData";
-import { Document } from "../../../types";
 import { UploadArea } from "../../../components/documents/UploadArea";
 import { DocumentList } from "../../../components/documents/DocumentList";
 import { trpc } from "@/lib/trpc/client";
 import { uploadFileToSupabase } from "@/server/services/storage";
 
 export default function DocumentsPage(): React.JSX.Element {
-  const tenant = mockTenants[0]; // Smith & Partners
-
   // Set up local state for list of documents
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");

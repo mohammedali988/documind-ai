@@ -3,7 +3,6 @@ import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function extractText(
   fileBuffer: Buffer,
@@ -46,6 +45,17 @@ export async function createChunk(
   );
 
   return { chunks, vectors };
+}
+
+export async function convertToNumber(userText: string): Promise<number[]> {
+  const embeddings = new GoogleGenerativeAIEmbeddings({
+    apiKey: process.env.GEMINI_API_KEY || "",
+    model: "models/gemini-embedding-001",
+  });
+
+  const vectors = await embeddings.embedQuery(userText);
+
+  return vectors;
 }
 
 export function cleanText(text: string): string {
