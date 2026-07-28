@@ -6,6 +6,20 @@ export const userRouter = router({
     return ctx.claims;
   }),
 
+  getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
+    const { data, error } = await ctx.supabase
+      .from("users")
+      .select(`*,tenant_id (id,name,plan)`)
+      .eq("id", ctx.claims.sub)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }),
+
   listTeamMembers: protectedProcedure.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
       .from("users")

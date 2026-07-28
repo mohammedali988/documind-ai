@@ -6,6 +6,7 @@ import { Message } from "../../types";
 import { formatDate, getInitials } from "../../lib/utils";
 
 import { SourceCitation } from "./SourceCitation";
+import { trpc } from "@/lib/trpc/client";
 
 export interface ChatMessageProps {
   message: Message;
@@ -18,6 +19,8 @@ export function ChatMessage({
 }: ChatMessageProps): React.JSX.Element {
   const isUser = message.role === "user";
   const nameToUse = userName || "User";
+
+  const { data: currentUser } = trpc.user.getCurrentUser.useQuery();
 
   return (
     <div
@@ -58,9 +61,11 @@ export function ChatMessage({
             isUser ? "justify-end" : "justify-start"
           }`}
         >
-          <span>{isUser ? nameToUse : "DocuMind Agent"}</span>
+          <span>
+            {isUser ? currentUser?.tenant_id?.name : "DocuMind Agent"}
+          </span>
           <span>•</span>
-          <span>{formatDate(new Date(message.createdAt))}</span>
+          <span>{formatDate(new Date(message.created_at))}</span>
         </div>
       </div>
 
@@ -69,9 +74,9 @@ export function ChatMessage({
         <div
           id={`user-avatar-${message.id}`}
           className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-150 text-indigo-700 flex items-center justify-center font-bold text-xs uppercase flex-shrink-0"
-          title={nameToUse}
+          title={currentUser?.tenant_id?.name}
         >
-          {getInitials(nameToUse)}
+          {getInitials(currentUser?.tenant_id?.name)}
         </div>
       )}
     </div>

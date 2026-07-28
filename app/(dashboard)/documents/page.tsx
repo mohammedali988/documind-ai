@@ -126,11 +126,6 @@ export default function DocumentsPage(): React.JSX.Element {
     }
   };
 
-  // const getUserName = (userId: string) => {
-  //   const user = mockUsers.find((u) => u.id === userId);
-  //   return user ? user.name : "System";
-  // };
-
   return (
     <div id="documents-page" className="space-y-8 animate-fade-in">
       <PageHeader

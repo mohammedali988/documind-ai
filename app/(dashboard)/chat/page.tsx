@@ -3,13 +3,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { BookOpen, Brain } from "lucide-react";
 import { PageHeader } from "../../../components/ui/PageHeader";
-import {
-  mockDocuments,
-  mockConversations,
-  mockMessages,
-  mockTenants,
-} from "../../../lib/mockData";
-import { Conversation, Message } from "../../../types";
+import { mockDocuments, mockTenants } from "../../../lib/mockData";
+import { Message } from "../../../types";
 import { ConversationList } from "../../../components/chat/ConversationList";
 import { ChatMessage } from "../../../components/chat/ChatMessage";
 import { ChatInput } from "../../../components/chat/ChatInput";
@@ -19,18 +14,21 @@ export default function ChatPage(): React.JSX.Element {
   const tenant = mockTenants[0]; // Smith & Partners
 
   const me = trpc.user.me.useQuery();
+  const utils = trpc.useUtils();
 
   // States
   const tenantDocs = mockDocuments.filter((doc) => doc.tenantId === tenant.id);
-  const tenantConvs = mockConversations.filter((c) => c.tenantId === tenant.id);
 
-  const [conversations, setConversations] =
-    useState<Conversation[]>(tenantConvs);
+  const {
+    data: conversations,
+    isLoading,
+    error,
+  } = trpc.conversations.listAllConversations.useQuery();
+
   const [activeConvId, setActiveConvId] = useState<string>(
-    tenantConvs[0]?.id || "",
+    conversations?.[0]?.id || "",
   );
 
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>(
     tenantDocs.map((doc) => doc.id),
   );
@@ -38,19 +36,28 @@ export default function ChatPage(): React.JSX.Element {
   const [isAiResponding, setIsAiResponding] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const addConversationMutation =
+    trpc.conversations.createConversation.useMutation({
+      onSuccess: () => utils.conversations.listAllConversations.invalidate(),
+    });
   const searchAi = trpc.conversations.aiSearchingProcedure.useMutation({
-    onSuccess: () => console.log("hello there")
+    onSuccess: () => console.log("hello there"),
   });
+
+  const { data: messages, isLoading: messagesLoading } =
+    trpc.messages.getAllMessagesForConversation.useQuery(
+      {
+        conversationId: activeConvId,
+      },
+      {
+        enabled: !!activeConvId,
+      },
+    );
 
   // Scroll to bottom when messages or active chat change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activeConvId, isAiResponding]);
-
-  // Current active conversation's messages
-  const activeMessages = messages.filter(
-    (msg) => msg.conversationId === activeConvId,
-  );
 
   // Toggle document selection for grounding
   const handleToggleDoc = (id: string) => {
@@ -61,59 +68,21 @@ export default function ChatPage(): React.JSX.Element {
 
   // Create a new chat session
   const handleNewChat = () => {
-    const newId = `conv-simulated-${Date.now()}`;
-    const newConv: Conversation = {
-      id: newId,
-      tenantId: me.data?.orgId || "org-simulated",
-      userId: "user-smith-admin",
-      title: "New Conversation",
-      createdAt: new Date(),
-    };
-
-    setConversations((prev) => [newConv, ...prev]);
-    setActiveConvId(newId);
+    addConversationMutation.mutate({
+      title: "new Conversation",
+    });
   };
 
   // Submitting a query to the AI
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = (text: string, conversationId: string) => {
     if (!text.trim() || isAiResponding) return;
-
-    const userMsg: Message = {
-      id: `msg-user-${Date.now()}`,
-      conversationId: activeConvId,
-      role: "user",
-      content: text,
-      sources: [],
-      createdAt: new Date(),
-    };
 
     const document = searchAi.mutate({
       userText: text,
+      conversationId: conversationId,
     });
 
-    // If it's a "New Conversation" thread, rename the title to the user's first query
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeConvId && c.title === "New Conversation"
-          ? {
-              ...c,
-              title: text.length > 32 ? `${text.substring(0, 32)}...` : text,
-            }
-          : c,
-      ),
-    );
-
-    // setMessages((prev) => [...prev, userMsg]);
     setIsAiResponding(true);
-
-    // const aiMsg: Message = {
-    //   id: `msg-ai-${Date.now()}`,
-    //   conversationId: activeConvId,
-    //   role: "assistant",
-    //   content: replyContent,
-    //   sources: citations,
-    //   createdAt: new Date(),
-    // };
   };
 
   return (
@@ -137,7 +106,7 @@ export default function ChatPage(): React.JSX.Element {
           className="w-64 border-r border-gray-100 flex flex-col shrink-0 bg-gray-50/50"
         >
           <ConversationList
-            conversations={conversations}
+            conversations={conversations || []}
             activeConversationId={activeConvId}
             onSelectConversation={setActiveConvId}
             onNewConversation={handleNewChat}
@@ -155,8 +124,8 @@ export default function ChatPage(): React.JSX.Element {
             id="messages-scroller"
             className="flex-1 overflow-y-auto p-6 space-y-6"
           >
-            {activeMessages.length > 0 ? (
-              activeMessages.map((msg) => (
+            {messages ? (
+              messages.map((msg) => (
                 <div
                   key={msg.id}
                   id={`chat-message-wrapper-${msg.id}`}
@@ -208,6 +177,7 @@ export default function ChatPage(): React.JSX.Element {
           <div className="p-4 border-t border-gray-100">
             <ChatInput
               onSendMessage={handleSendMessage}
+              conversationId={activeConvId}
               isLoading={isAiResponding}
               placeholder="Ask a question about your grounded documents (e.g. 'explain the NDA breach clauses')..."
             />

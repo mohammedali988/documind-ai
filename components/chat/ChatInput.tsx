@@ -6,8 +6,9 @@ import { Button } from "../ui/Button";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 
 export interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, conversationId: string) => void;
   isLoading?: boolean;
+  conversationId: string;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -15,6 +16,7 @@ export interface ChatInputProps {
 export function ChatInput({
   onSendMessage,
   isLoading,
+  conversationId,
   disabled,
   placeholder = "Type a message...",
 }: ChatInputProps): React.JSX.Element {
@@ -38,7 +40,7 @@ export function ChatInput({
     if (e) e.preventDefault();
     if (!text.trim() || isLoading || disabled) return;
 
-    onSendMessage(text.trim());
+    onSendMessage(text.trim(), conversationId);
     setText("");
   };
 

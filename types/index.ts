@@ -58,7 +58,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   sources: string[]; // Source citations or document chunks
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface PlanLimits {
