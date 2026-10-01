@@ -49,7 +49,7 @@ export interface Conversation {
   tenantId: string;
   userId: string;
   title: string;
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface Message {

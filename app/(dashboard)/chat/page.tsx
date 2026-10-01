@@ -77,12 +77,13 @@ export default function ChatPage(): React.JSX.Element {
   const handleSendMessage = (text: string, conversationId: string) => {
     if (!text.trim() || isAiResponding) return;
 
+    setIsAiResponding(true);
     const document = searchAi.mutate({
       userText: text,
       conversationId: conversationId,
     });
 
-    setIsAiResponding(true);
+    setIsAiResponding(false)
   };
 
   return (
@@ -131,7 +132,7 @@ export default function ChatPage(): React.JSX.Element {
                   id={`chat-message-wrapper-${msg.id}`}
                   className="w-full"
                 >
-                  <ChatMessage message={msg} userName={tenant.name} />
+                  <ChatMessage message={msg} />
                 </div>
               ))
             ) : (

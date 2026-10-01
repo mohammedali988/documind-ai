@@ -94,7 +94,9 @@ export const conversationsRouter = router({
       .eq("user_id", ctx.claims.sub) // same user
       .order("created_at", { ascending: false });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
     return data;
   }),
 });

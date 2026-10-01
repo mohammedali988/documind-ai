@@ -47,7 +47,7 @@ export function ConversationItem({
             isActive ? "text-indigo-400 font-semibold" : "text-gray-400"
           }`}
         >
-          {formatDate(conversation.createdAt)}
+          {formatDate(new Date(conversation.created_at))}
         </span>
       </div>
     </button>

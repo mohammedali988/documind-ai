@@ -10,15 +10,10 @@ import { trpc } from "@/lib/trpc/client";
 
 export interface ChatMessageProps {
   message: Message;
-  userName?: string;
 }
 
-export function ChatMessage({
-  message,
-  userName,
-}: ChatMessageProps): React.JSX.Element {
+export function ChatMessage({ message }: ChatMessageProps): React.JSX.Element {
   const isUser = message.role === "user";
-  const nameToUse = userName || "User";
 
   const { data: currentUser } = trpc.user.getCurrentUser.useQuery();
 
